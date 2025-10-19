@@ -105,6 +105,10 @@ inputs:
     description: "Comma-separated list of Claude Code plugin names to install (e.g., 'plugin1,plugin2,plugin3')"
     required: false
     default: ""
+  stream_output_file:
+    description: "Path to write streaming JSON Lines output for real-time monitoring. If not provided, streaming output is disabled."
+    required: false
+    default: ""
 
 outputs:
   execution_file:
@@ -218,6 +222,7 @@ runs:
         INPUT_PATH_TO_CLAUDE_CODE_EXECUTABLE: ${{ inputs.path_to_claude_code_executable }}
         INPUT_PATH_TO_BUN_EXECUTABLE: ${{ inputs.path_to_bun_executable }}
         INPUT_PLUGINS: ${{ inputs.plugins }}
+        INPUT_STREAM_OUTPUT_FILE: ${{ inputs.stream_output_file }}
 
         # Model configuration
         GITHUB_TOKEN: ${{ steps.prepare.outputs.GITHUB_TOKEN }}
