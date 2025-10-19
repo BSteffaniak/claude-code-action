@@ -117,6 +117,10 @@ inputs:
     description: "Newline-separated list of Claude Code plugin marketplace Git URLs to install from (e.g., 'https://github.com/user/marketplace1.git\nhttps://github.com/user/marketplace2.git')"
     required: false
     default: ""
+  stream_output_file:
+    description: "Path to write streaming JSON Lines output for real-time monitoring. If not provided, streaming output is disabled."
+    required: false
+    default: ""
 
 outputs:
   execution_file:
@@ -239,6 +243,7 @@ runs:
         CLAUDE_CODE_ACTION: "1"
         INPUT_PROMPT_FILE: ${{ runner.temp }}/claude-prompts/claude-prompt.txt
         INPUT_SETTINGS: ${{ inputs.settings }}
+        INPUT_STREAM_OUTPUT_FILE: ${{ inputs.stream_output_file }}
         INPUT_CLAUDE_ARGS: ${{ steps.prepare.outputs.claude_args }}
         INPUT_EXPERIMENTAL_SLASH_COMMANDS_DIR: ${{ github.action_path }}/slash-commands
         INPUT_ACTION_INPUTS_PRESENT: ${{ steps.prepare.outputs.action_inputs_present }}

@@ -10,6 +10,7 @@ const execAsync = promisify(exec);
 
 const PIPE_PATH = `${process.env.RUNNER_TEMP}/claude_prompt_pipe`;
 const EXECUTION_FILE = `${process.env.RUNNER_TEMP}/claude-execution-output.json`;
+const STREAM_OUTPUT_FILE = process.env.INPUT_STREAM_OUTPUT_FILE || "";
 const BASE_ARGS = ["--verbose", "--output-format", "stream-json"];
 
 /**
@@ -145,7 +146,7 @@ export async function parseAndSetStructuredOutputs(
     if (!result?.structured_output) {
       throw new Error(
         `--json-schema was provided but Claude did not return structured_output.\n` +
-          `Found ${messages.length} messages. Result exists: ${!!result}\n`,
+        `Found ${messages.length} messages. Result exists: ${!!result}\n`,
       );
     }
 
@@ -252,10 +253,32 @@ export async function runClaude(promptPath: string, options: ClaudeOptions) {
     );
   }
 
+  // Only create stream writer if output file is specified
+  let streamWriter: ReturnType<typeof createWriteStream> | null = null;
+
+  if (STREAM_OUTPUT_FILE && STREAM_OUTPUT_FILE.trim() !== "") {
+    try {
+      streamWriter = createWriteStream(STREAM_OUTPUT_FILE, { flags: "a" });
+      console.log(`Streaming output enabled: ${STREAM_OUTPUT_FILE}`);
+
+      streamWriter.on("error", (error) => {
+        core.warning(`Failed to write to stream output file: ${error}`);
+        streamWriter = null; // Disable on error
+      });
+    } catch (error) {
+      core.warning(`Could not create stream output file: ${error}`);
+    }
+  }
+
   // Capture output for parsing execution metrics
   let output = "";
   claudeProcess.stdout.on("data", (data) => {
     const text = data.toString();
+
+    // Write to stream file if enabled
+    if (streamWriter) {
+      streamWriter.write(text);
+    }
 
     // Try to parse as JSON and handle based on verbose setting
     const lines = text.split("\n");
@@ -326,6 +349,11 @@ export async function runClaude(promptPath: string, options: ClaudeOptions) {
     pipeProcess.kill("SIGTERM");
   } catch (e) {
     // Process may already be dead
+  }
+
+  // Close the stream writer if it exists
+  if (streamWriter) {
+    streamWriter.end();
   }
 
   // Clean up pipe file
