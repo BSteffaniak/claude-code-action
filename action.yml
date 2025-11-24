@@ -117,6 +117,10 @@ inputs:
     description: "Newline-separated list of Claude Code plugin marketplace Git URLs to install from (e.g., 'https://github.com/user/marketplace1.git\nhttps://github.com/user/marketplace2.git')"
     required: false
     default: ""
+  stream_output_file:
+    description: "Path to write streaming JSON Lines output for real-time monitoring. If not provided, streaming output is disabled."
+    required: false
+    default: ""
 
 outputs:
   execution_file:
@@ -239,6 +243,7 @@ runs:
         CLAUDE_CODE_ACTION: "1"
         INPUT_PROMPT_FILE: ${{ runner.temp }}/claude-prompts/claude-prompt.txt
         INPUT_SETTINGS: ${{ inputs.settings }}
+        INPUT_STREAM_OUTPUT_FILE: ${{ inputs.stream_output_file }}
         INPUT_CLAUDE_ARGS: ${{ steps.prepare.outputs.claude_args }}
         INPUT_EXPERIMENTAL_SLASH_COMMANDS_DIR: ${{ github.action_path }}/slash-commands
         INPUT_ACTION_INPUTS_PRESENT: ${{ steps.prepare.outputs.action_inputs_present }}
@@ -312,23 +317,6 @@ runs:
         USE_STICKY_COMMENT: ${{ inputs.use_sticky_comment }}
         USE_COMMIT_SIGNING: ${{ inputs.use_commit_signing }}
         TRACK_PROGRESS: ${{ inputs.track_progress }}
-
-    - name: Display Claude Code Report
-      if: steps.prepare.outputs.contains_trigger == 'true' && steps.claude-code.outputs.execution_file != ''
-      shell: bash
-      run: |
-        # Try to format the turns, but if it fails, dump the raw JSON
-        if bun run ${{ github.action_path }}/src/entrypoints/format-turns.ts "${{ steps.claude-code.outputs.execution_file }}" >> $GITHUB_STEP_SUMMARY 2>/dev/null; then
-          echo "Successfully formatted Claude Code report"
-        else
-          echo "## Claude Code Report (Raw Output)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Failed to format output (please report). Here's the raw JSON:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```json' >> $GITHUB_STEP_SUMMARY
-          cat "${{ steps.claude-code.outputs.execution_file }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-        fi
 
     - name: Revoke app token
       if: always() && inputs.github_token == '' && steps.prepare.outputs.skipped_due_to_workflow_validation_mismatch != 'true'
